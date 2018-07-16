@@ -244,7 +244,7 @@ func (c *Client) validateLocal(resp *Response) stateFunc {
 		return c.getRequest
 	}
 
-	if size < resp.fi.Size() {
+	if resp.HTTPResponse.ContentLength != -1 && size < resp.fi.Size() {
 		resp.err = ErrBadLength
 		return c.closeResponse
 	}
@@ -278,11 +278,12 @@ func (c *Client) checksumFile(resp *Response) stateFunc {
 	defer f.Close()
 
 	// hash file
+	resp.Request.hash.Reset() // to be sure for resumed requests
 	t := newTransfer(resp.Request.Context(), nil, resp.Request.hash, f, nil)
 	if nc, err := t.copy(); err != nil {
 		resp.err = err
 		return c.closeResponse
-	} else if nc != resp.Size {
+	} else if resp.HTTPResponse.ContentLength != -1 && nc != resp.Size {
 		resp.err = ErrBadLength
 		return c.closeResponse
 	}
